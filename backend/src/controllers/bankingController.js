@@ -64,13 +64,12 @@ exports.getAspsps = async (req, res) => {
 exports.getTransactions = async (req, res) => {
   try {
     const { account_id } = req.params;
-    const { session_id } = req.query;
-
+    const { session_id, date_from, date_to } = req.query;
     if (!session_id) {
       return res.status(400).json({ error: 'Session ID is required' });
     }
 
-    const data = await transactionService.fetchTransactionsByAccount(session_id, account_id);
+    const data = await transactionService.fetchTransactionsByAccount(session_id, account_id, date_from, date_to);
     res.json(data);
   } catch (error) {
     console.error('Error fetching transactions:', error.response?.data || error.message);

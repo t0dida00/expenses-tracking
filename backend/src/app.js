@@ -4,9 +4,14 @@ const cors = require('cors');
 const path = require('path');
 const apiRoutes = require('./routes/api');
 
+const morgan = require('morgan');
+const compression = require('compression');
+
 const app = express();
 const port = config.PORT;
 
+app.use(compression());
+app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
