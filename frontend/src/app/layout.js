@@ -3,6 +3,7 @@ import "./globals.css";
 import { BankingProvider } from '../contexts/BankingContext';
 import QueryProvider from '../providers/QueryProvider';
 import Sidebar from '../components/Sidebar';
+import ChatBot from '../components/ChatBot';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({ children }) {
               <main style={{ marginLeft: '260px', flex: 1, minHeight: '100vh', backgroundColor: '#05070a' }}>
                 {children}
               </main>
+              <ChatBot />
             </div>
           </BankingProvider>
         </QueryProvider>
