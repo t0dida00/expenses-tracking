@@ -75,3 +75,55 @@ exports.mergeTransactions = (existingData, newTransactions) => {
     // Optional: Sort by date descending
     return finalTransactions.sort((a, b) => new Date(b.value_date) - new Date(a.value_date));
 };
+
+exports.updateTransactionInFile = (account_id, entry_reference, updates) => {
+    try {
+        const data = exports.readTransactionsFromFile(account_id);
+        if (!data || !data.transactions) return null;
+
+        const index = data.transactions.findIndex(t => t.entry_reference === entry_reference);
+        if (index === -1) return null;
+
+        // Perform partial update
+        const updatedTx = { ...data.transactions[index], ...updates };
+        
+        // Handle generic 'description' update
+        if (updates.description) {
+            if (updatedTx.amount >= 0) {
+                updatedTx.creditor_name = updates.description;
+            } else {
+                updatedTx.debtor_name = updates.description;
+            }
+        }
+
+        data.transactions[index] = updatedTx;
+
+        // If amount was updated, ensure it's a number and handles indicator correctly
+        if (updates.amount !== undefined) {
+            updatedTx.amount = parseFloat(updates.amount);
+            // If the user wants to keep a separate object structure, we update it too
+            if (updatedTx.transaction_amount) {
+                updatedTx.transaction_amount.amount = Math.abs(updatedTx.amount).toString();
+            }
+        }
+
+        // Handle indicator update (CRDT/DBIT)
+        if (updates.indicator) {
+            const ind = updates.indicator.toUpperCase();
+            if (ind === 'CRDT' || ind === 'DBIT') {
+                if (updatedTx.credit_debit_indicator) updatedTx.credit_debit_indicator = ind;
+                if (updatedTx.creditDebitIndicator) updatedTx.creditDebitIndicator = ind;
+                
+                // Adjust amount sign based on new indicator
+                const rawAmt = Math.abs(updatedTx.amount);
+                updatedTx.amount = ind === 'DBIT' ? -rawAmt : rawAmt;
+            }
+        }
+
+        exports.saveTransactionsToFile(account_id, data.transactions);
+        return updatedTx;
+    } catch (error) {
+        console.error(`Error updating transaction: ${error.message}`);
+        return null;
+    }
+};

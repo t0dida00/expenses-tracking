@@ -6,6 +6,7 @@ import { useBankingContext } from '../../contexts/BankingContext';
 import { useAllAccountTransactions } from '../../hooks/useTransactions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ChevronLeft, ChevronRight, Filter, ArrowUpDown } from 'lucide-react';
+import TransactionModal from '../../components/TransactionModal';
 
 function dedup(accounts) {
   const seen = new Map();
@@ -93,6 +94,14 @@ export default function TransactionsPage() {
   const [sortField, setSortField] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
 
+  const [selectedTx, setSelectedTx] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleTxClick = (tx) => {
+    setSelectedTx(tx);
+    setIsModalOpen(true);
+  };
+
   // Flatten and process all transactions
   const processedTxs = useMemo(() => {
     let flatTxs = [];
@@ -115,7 +124,8 @@ export default function TransactionsPage() {
           _amount: amt,
           _isIncome: amt > 0,
           _category: getCategory(tx),
-          _childCategory: tx.child_category || null
+          _childCategory: tx.child_category || null,
+          _accountUid: accUid
         });
       });
     });
@@ -288,7 +298,12 @@ export default function TransactionsPage() {
                       <motion.tr
                         key={i}
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                        style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }}
+                        onClick={() => handleTxClick(tx)}
+                        style={{ 
+                          borderBottom: '1px solid rgba(255,255,255,0.03)', 
+                          transition: 'background 0.2s',
+                          cursor: 'pointer'
+                        }}
                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
@@ -364,6 +379,13 @@ export default function TransactionsPage() {
           </GlassCard>
         </motion.div>
       </AnimatePresence>
+
+      <TransactionModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        transaction={selectedTx}
+        accountId={selectedTx?._accountUid} // Need to ensure _accountUid is in processed transactions
+      />
     </div>
   );
 }

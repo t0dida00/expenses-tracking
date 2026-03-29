@@ -59,6 +59,38 @@ class BankingService {
     const data = await response.json();
     return data.transactions || [];
   }
+  
+  async updateTransaction(accountId, entryReference, updates) {
+    const encodedAcc = encodeURIComponent(accountId);
+    const encodedRef = encodeURIComponent(entryReference);
+    const url = `${this.baseUrl}/accounts/${encodedAcc}/transactions/${encodedRef}`;
+    
+    console.log(`FETCH PATCH: ${url}`);
+    
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+
+    const contentType = response.headers.get('content-type');
+    if (!response.ok) {
+      let errorMsg = 'Failed to update transaction';
+      if (contentType && contentType.includes('application/json')) {
+        const error = await response.json();
+        errorMsg = error.error || errorMsg;
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON Error Response:', text);
+      }
+      throw new Error(errorMsg);
+    }
+
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json();
+    }
+    return { status: 'ok' };
+  }
 }
 
 export const bankingService = new BankingService();

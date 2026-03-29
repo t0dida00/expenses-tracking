@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useBankingContext } from '../../contexts/BankingContext';
 import { useAllAccountTransactions } from '../../hooks/useTransactions';
+import TransactionModal from '../../components/TransactionModal';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer, PieChart, Pie, Cell,
@@ -161,6 +162,14 @@ export default function DashboardPage() {
   const [selectedAcc, setSelectedAcc] = useState('all'); // 'all' or uid
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
+  const [selectedTx, setSelectedTx] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleTxClick = (tx) => {
+    setSelectedTx(tx);
+    setIsModalOpen(true);
+  };
+
   const { data: allTransactions = {}, isLoading } = useAllAccountTransactions(accounts);
 
   // ── available years ────────────────────────────────────────────────────────
@@ -194,7 +203,8 @@ export default function DashboardPage() {
           _amt: normalizeAmount(tx), 
           _acc: accountLabel(acc), 
           _cat: getCategory(tx),
-          _childCat: tx.child_category || null
+          _childCat: tx.child_category || null,
+          _accUid: acc.uid
         });
       });
     });
@@ -499,7 +509,11 @@ export default function DashboardPage() {
                       <motion.tr key={i}
                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.6 + i * 0.03 }}
-                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        onClick={() => handleTxClick(tx)}
+                        style={{ 
+                          borderBottom: '1px solid rgba(255,255,255,0.04)',
+                          cursor: 'pointer' 
+                        }}>
                         <td style={{ padding: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontSize: '12px' }}>
                           {date ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—'}
                         </td>
@@ -569,6 +583,13 @@ export default function DashboardPage() {
           </GlassCard>
         </motion.div>
       </div>
+
+      <TransactionModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        transaction={selectedTx}
+        accountId={selectedTx?._accUid}
+      />
     </div>
   );
 }

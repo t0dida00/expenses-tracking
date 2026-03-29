@@ -1,6 +1,23 @@
 const enableBankingService = require('../services/enableBankingService');
 const transactionService = require('../services/transactionService');
-const { saveTransactionsToFile, readTransactionsFromFile, mergeTransactions } = require('../utils/storage');
+const { saveTransactionsToFile, readTransactionsFromFile, mergeTransactions, updateTransactionInFile } = require('../utils/storage');
+
+exports.updateTransaction = async (req, res) => {
+  try {
+    const { account_id, entry_reference } = req.params;
+    const updates = req.body;
+
+    const updated = updateTransactionInFile(account_id, entry_reference, updates);
+    if (!updated) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating transaction:', error.message);
+    res.status(500).json({ error: 'Failed to update transaction' });
+  }
+};
 
 const CACHE_TTL = 60 * 1000; // 1 minute fresh cache window
 
