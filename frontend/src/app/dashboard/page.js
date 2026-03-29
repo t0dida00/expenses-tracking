@@ -200,7 +200,7 @@ export default function DashboardPage() {
 
         flatTxs.push({ 
           ...tx, 
-          _amt: normalizeAmount(tx), 
+          _amount: normalizeAmount(tx), 
           _acc: accountLabel(acc), 
           _cat: getCategory(tx),
           _childCat: tx.child_category || null,
@@ -211,8 +211,8 @@ export default function DashboardPage() {
 
     flatTxs.sort((a, b) => new Date(b.booking_date || b.value_date || 0) - new Date(a.booking_date || a.value_date || 0));
 
-    const totalIn  = flatTxs.filter(t => t._amt > 0).reduce((s, t) => s + t._amt, 0);
-    const totalOut = flatTxs.filter(t => t._amt < 0).reduce((s, t) => s + Math.abs(t._amt), 0);
+    const totalIn  = flatTxs.filter(t => t._amount > 0).reduce((s, t) => s + t._amount, 0);
+    const totalOut = flatTxs.filter(t => t._amount < 0).reduce((s, t) => s + Math.abs(t._amount), 0);
 
     // Monthly buckets (ensuring all 12 months of the year are shown)
     const byMonth = {};
@@ -225,7 +225,7 @@ export default function DashboardPage() {
       const d = new Date(tx.booking_date || tx.value_date);
       const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       if (byMonth[k]) {
-        tx._amt > 0 ? (byMonth[k].income += tx._amt) : (byMonth[k].expense += Math.abs(tx._amt));
+        tx._amount > 0 ? (byMonth[k].income += tx._amount) : (byMonth[k].expense += Math.abs(tx._amount));
       }
     });
 
@@ -242,8 +242,8 @@ export default function DashboardPage() {
     // Category breakdowns
     const expCats = {}, incCats = {};
     flatTxs.forEach(tx => {
-      if (tx._amt < 0) expCats[tx._cat] = (expCats[tx._cat] || 0) + Math.abs(tx._amt);
-      else             incCats[tx._cat] = (incCats[tx._cat] || 0) + tx._amt;
+      if (tx._amount < 0) expCats[tx._cat] = (expCats[tx._cat] || 0) + Math.abs(tx._amount);
+      else             incCats[tx._cat] = (incCats[tx._cat] || 0) + tx._amount;
     });
     const expPie = Object.entries(expCats).map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) })).sort((a,b) => b.value - a.value);
     const incPie = Object.entries(incCats).map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) })).sort((a,b) => b.value - a.value);
@@ -253,9 +253,9 @@ export default function DashboardPage() {
 
     // Top creditors (expense only)
     const creditors = {};
-    flatTxs.filter(t => t._amt < 0).forEach(tx => {
+    flatTxs.filter(t => t._amount < 0).forEach(tx => {
       const name = tx.creditor?.name || tx.creditor_name || (Array.isArray(tx.remittance_information) ? tx.remittance_information[0] : tx.remittance_information) || 'Unknown';
-      creditors[name] = (creditors[name] || 0) + Math.abs(tx._amt);
+      creditors[name] = (creditors[name] || 0) + Math.abs(tx._amount);
     });
     const topCreditors = Object.entries(creditors).map(([name, total]) => ({ name, total })).sort((a,b) => b.total - a.total).slice(0, 8);
     const maxCreditor = topCreditors[0]?.total || 1;
@@ -535,8 +535,8 @@ export default function DashboardPage() {
                           )}
                         </td>
                         <td style={{ padding: '10px', fontWeight: '600', fontSize: '13px', textAlign: 'right', whiteSpace: 'nowrap',
-                          color: tx._amt >= 0 ? '#22c55e' : '#ec4899' }}>
-                          {tx._amt >= 0 ? '+' : '-'}${fmt(Math.abs(tx._amt))}
+                          color: tx._amount >= 0 ? '#22c55e' : '#ec4899' }}>
+                          {tx._amount >= 0 ? '+' : '-'}${fmt(Math.abs(tx._amount))}
                         </td>
                       </motion.tr>
                     );
