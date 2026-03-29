@@ -40,46 +40,52 @@ const SectionTitle = ({ children, style = {} }) => (
 const fmt = (num) => (num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const CATEGORY_COLORS = {
-  Food: '#f59e0b',
-  Housing: '#10b981',
-  Utilities: '#6366f1',
-  Entertainment: '#8b5cf6',
-  Transport: '#06b6d4',
-  Salary: '#22c55e',
-  Investments: '#14b8a6',
-  Others: '#ec4899',
+  'Income': '#22c55e',
+  'Housing': '#10b981',
+  'Bills & Utilities': '#6366f1',
+  'Food & Grocery': '#f59e0b',
+  'Transportation': '#06b6d4',
+  'Shopping': '#ec4899',
+  'Entertainment': '#8b5cf6',
+  'Health & Wellness': '#f43f5e',
+  'Financial': '#475569',
+  'Travel': '#3b82f6',
+  'Gifts & Donations': '#d946ef',
+  'Other': '#64748b',
 };
 
 function normalizeAmount(tx) {
-  const raw = parseFloat(tx.transaction_amount?.amount || 0);
+  const raw = parseFloat(tx.transaction_amount?.amount || tx.amount || 0);
   const indicator = tx.credit_debit_indicator?.toUpperCase?.() ?? tx.creditDebitIndicator?.toUpperCase?.();
   if (indicator === 'DBIT') return -Math.abs(raw);
   if (indicator === 'CRDT') return Math.abs(raw);
   return raw;
 }
 
-function categorize(tx) {
+function getCategory(tx) {
+  // Priority: 1. AI category, 2. Manual rule-based fallback
+  if (tx.category) return tx.category;
+
   const raw = [
     tx.creditor?.name, tx.debtor?.name,
     tx.creditor_name, tx.debtor_name,
     ...(Array.isArray(tx.remittance_information) ? tx.remittance_information : [tx.remittance_information])
   ].filter(Boolean).join(' ').toLowerCase();
 
-  if (/salary|palkka|income|deposit|wage|return/.test(raw)) return 'Salary';
-  if (/rent|housing|asunto|mortgage/.test(raw))              return 'Housing';
-  if (/food|grocery|kauppa|ruoka|market|eat|resto/.test(raw)) return 'Food';
-  if (/transport|taxi|bus|train|fuel|gas station/.test(raw)) return 'Transport';
-  if (/netflix|spotify|sub|stream|entertain/.test(raw))      return 'Entertainment';
-  if (/electric|water|utility|utilities|phone|internet/.test(raw)) return 'Utilities';
-  if (/invest|fund|stock|dividend/.test(raw))                return 'Investments';
-  return 'Others';
+  if (/salary|palkka|income|deposit|wage|return/.test(raw)) return 'Income';
+  if (/rent|housing|asunto|mortgage/.test(raw)) return 'Housing';
+  if (/food|grocery|kauppa|ruoka|market|eat|resto/.test(raw)) return 'Food & Grocery';
+  if (/transport|taxi|bus|train|fuel|gas station/.test(raw)) return 'Transportation';
+  if (/netflix|spotify|sub|stream|entertain/.test(raw)) return 'Entertainment';
+  if (/electric|water|utility|utilities|phone|internet/.test(raw)) return 'Bills & Utilities';
+  return 'Other';
 }
 
 export default function TransactionsPage() {
   const { linkedAccounts } = useBankingContext();
   const accounts = useMemo(() => dedup(linkedAccounts), [linkedAccounts]);
   const { data: allTransactions = {}, isLoading } = useAllAccountTransactions(accounts);
-  
+
   const [search, setSearch] = useState('');
   const [selectedAcc, setSelectedAcc] = useState('all');
   const [page, setPage] = useState(1);
@@ -95,10 +101,10 @@ export default function TransactionsPage() {
       const account = accounts.find(a => a.uid === accUid);
       txs.forEach(tx => {
         const date = tx.booking_date || tx.value_date || 'Unknown';
-        const desc = tx.creditor?.name || tx.debtor?.name || (Array.isArray(tx.remittance_information) 
-          ? tx.remittance_information.join(' ') 
+        const desc = tx.creditor?.name || tx.debtor?.name || (Array.isArray(tx.remittance_information)
+          ? tx.remittance_information.join(' ')
           : (tx.creditor_name || tx.debtor_name || tx.remittance_information || 'Transaction'));
-        
+
         const amt = normalizeAmount(tx);
         flatTxs.push({
           ...tx,
@@ -108,7 +114,8 @@ export default function TransactionsPage() {
           _accountName: account?.name || 'Account',
           _amount: amt,
           _isIncome: amt > 0,
-          _category: categorize(tx)
+          _category: getCategory(tx),
+          _childCategory: tx.child_category || null
         });
       });
     });
@@ -116,8 +123,8 @@ export default function TransactionsPage() {
     // Search filter
     if (search) {
       const q = search.toLowerCase();
-      flatTxs = flatTxs.filter(t => 
-        t._descDisplay.toLowerCase().includes(q) || 
+      flatTxs = flatTxs.filter(t =>
+        t._descDisplay.toLowerCase().includes(q) ||
         t._bankName.toLowerCase().includes(q) ||
         t._dateDisplay.includes(q)
       );
@@ -127,7 +134,7 @@ export default function TransactionsPage() {
     flatTxs.sort((a, b) => {
       let valA = sortField === 'date' ? a._dateDisplay : sortField === 'amount' ? a._amount : a._descDisplay;
       let valB = sortField === 'date' ? b._dateDisplay : sortField === 'amount' ? b._amount : b._descDisplay;
-      
+
       if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
       if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
       return 0;
@@ -153,9 +160,9 @@ export default function TransactionsPage() {
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '120px 24px', textAlign: 'center' }}>
         <GlassCard style={{ maxWidth: '420px', margin: '0 auto', padding: '48px 32px' }}>
-          <div style={{ 
-            width: '64px', height: '64px', borderRadius: '20px', 
-            background: 'rgba(255,255,255,0.03)', display: 'flex', 
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '20px',
+            background: 'rgba(255,255,255,0.03)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px'
           }}>
             <Filter size={32} color="#475569" />
@@ -164,8 +171,8 @@ export default function TransactionsPage() {
           <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.6', marginBottom: '32px' }}>
             Connect your first bank account in settings to start tracking your transaction history.
           </p>
-          <Link href="/setting" style={{ 
-            display: 'inline-block', padding: '12px 24px', background: 'linear-gradient(135deg, #a855f7, #ec4899)', 
+          <Link href="/setting" style={{
+            display: 'inline-block', padding: '12px 24px', background: 'linear-gradient(135deg, #a855f7, #ec4899)',
             color: 'white', borderRadius: '14px', fontSize: '14px', fontWeight: '600', textDecoration: 'none',
             boxShadow: '0 4px 20px rgba(168, 85, 247, 0.25)'
           }}>
@@ -187,7 +194,7 @@ export default function TransactionsPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <select 
+              <select
                 value={selectedAcc}
                 onChange={(e) => { setSelectedAcc(e.target.value); setPage(1); }}
                 style={{
@@ -209,7 +216,7 @@ export default function TransactionsPage() {
             <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ position: 'relative', width: '320px' }}>
                 <Search size={16} color="#64748b" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input 
+                <input
                   type="text"
                   placeholder="Search transactions..."
                   value={search}
@@ -225,7 +232,7 @@ export default function TransactionsPage() {
 
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: '#64748b' }}>Show</span>
-                <select 
+                <select
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                   style={{
@@ -253,12 +260,12 @@ export default function TransactionsPage() {
                       { label: 'Category', field: 'cat', width: '15%' },
                       { label: 'Amount', field: 'amount', width: '18%' }
                     ].map(col => (
-                      <th 
+                      <th
                         key={col.label}
                         onClick={() => col.field && handleSort(col.field)}
-                        style={{ 
-                          padding: '16px 24px', textAlign: col.field === 'amount' ? 'right' : 'left', 
-                          color: '#64748b', fontWeight: '500', fontSize: '11px', textTransform: 'uppercase', 
+                        style={{
+                          padding: '16px 24px', textAlign: col.field === 'amount' ? 'right' : 'left',
+                          color: '#64748b', fontWeight: '500', fontSize: '11px', textTransform: 'uppercase',
                           letterSpacing: '0.05em', cursor: col.field ? 'pointer' : 'default',
                           width: col.width
                         }}
@@ -278,7 +285,7 @@ export default function TransactionsPage() {
                     <tr><td colSpan={5} style={{ textAlign: 'center', padding: '100px', color: '#64748b' }}>No transactions found for the current filters.</td></tr>
                   ) : (
                     currentTxs.map((tx, i) => (
-                      <motion.tr 
+                      <motion.tr
                         key={i}
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
                         style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }}
@@ -292,17 +299,23 @@ export default function TransactionsPage() {
                           <div style={{ fontSize: '10px', color: '#475569' }}>{tx._accountName}</div>
                         </td>
                         <td style={{ padding: '16px 24px' }}>
-                          <span style={{ 
-                            padding: '4px 8px', borderRadius: '6px', 
-                            background: `${CATEGORY_COLORS[tx._category]}15`, 
-                            color: CATEGORY_COLORS[tx._category], 
-                            fontSize: '10px', fontWeight: '600'
+                          <span style={{
+                            padding: '4px 8px', borderRadius: '6px',
+                            background: `${CATEGORY_COLORS[tx._category] || '#64748b'}15`,
+                            color: CATEGORY_COLORS[tx._category] || '#64748b',
+                            fontSize: '10px', fontWeight: '600',
+                            display: 'inline-block'
                           }}>
                             {tx._category}
                           </span>
+                          {tx._childCategory && tx._childCategory !== 'Other' && (
+                            <div style={{ fontSize: '10px', color: '#475569', marginTop: '4px', paddingLeft: '4px' }}>
+                              {tx._childCategory}
+                            </div>
+                          )}
                         </td>
-                        <td style={{ 
-                          padding: '16px 24px', textAlign: 'right', 
+                        <td style={{
+                          padding: '16px 24px', textAlign: 'right',
                           color: tx._isIncome ? '#10b981' : '#f43f5e',
                           fontWeight: '600', fontSize: '15px', fontFamily: 'Space Grotesk'
                         }}>
@@ -321,7 +334,7 @@ export default function TransactionsPage() {
                 Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, processedTxs.length)} of {processedTxs.length} entries
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button 
+                <button
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
                   style={{
@@ -335,7 +348,7 @@ export default function TransactionsPage() {
                 <div style={{ fontSize: '13px', color: '#fff', padding: '0 12px' }}>
                   Page {page} of {totalPages}
                 </div>
-                <button 
+                <button
                   disabled={page === totalPages}
                   onClick={() => setPage(p => p + 1)}
                   style={{

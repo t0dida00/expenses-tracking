@@ -47,14 +47,16 @@ function fmt(n) {
  * Fall back to the raw sign if no indicator is present.
  */
 function normalizeAmount(tx) {
-  const raw = parseFloat(tx.transaction_amount?.amount || 0);
+  const raw = parseFloat(tx.transaction_amount?.amount || tx.amount || 0);
   const indicator = tx.credit_debit_indicator?.toUpperCase?.() ?? tx.creditDebitIndicator?.toUpperCase?.();
   if (indicator === 'DBIT') return -Math.abs(raw);
   if (indicator === 'CRDT') return Math.abs(raw);
-  return raw; // already signed (some APIs do this)
+  return raw;
 }
 
-function categorize(tx) {
+function getCategory(tx) {
+  if (tx.category) return tx.category;
+
   const raw = [
     tx.creditor?.name, tx.debtor?.name,
     tx.creditor_name, tx.debtor_name,
@@ -63,14 +65,13 @@ function categorize(tx) {
       : [tx.remittance_information])
   ].filter(Boolean).join(' ').toLowerCase();
 
-  if (/salary|palkka|income|deposit|wage|return/.test(raw)) return 'Salary';
+  if (/salary|palkka|income|deposit|wage|return/.test(raw)) return 'Income';
   if (/rent|housing|asunto|mortgage/.test(raw))              return 'Housing';
-  if (/food|grocery|kauppa|ruoka|market|eat|resto/.test(raw)) return 'Food';
-  if (/transport|taxi|bus|train|fuel|gas station/.test(raw)) return 'Transport';
+  if (/food|grocery|kauppa|ruoka|market|eat|resto/.test(raw)) return 'Food & Grocery';
+  if (/transport|taxi|bus|train|fuel|gas station/.test(raw)) return 'Transportation';
   if (/netflix|spotify|sub|stream|entertain/.test(raw))      return 'Entertainment';
-  if (/electric|water|utility|utilities|phone|internet/.test(raw)) return 'Utilities';
-  if (/invest|fund|stock|dividend/.test(raw))                return 'Investments';
-  return 'Others';
+  if (/electric|water|utility|utilities|phone|internet/.test(raw)) return 'Bills & Utilities';
+  return 'Other';
 }
 
 // ── framer variants ───────────────────────────────────────────────────────────
@@ -192,7 +193,8 @@ export default function DashboardPage() {
           ...tx, 
           _amt: normalizeAmount(tx), 
           _acc: accountLabel(acc), 
-          _cat: categorize(tx) 
+          _cat: getCategory(tx),
+          _childCat: tx.child_category || null
         });
       });
     });
@@ -505,9 +507,18 @@ export default function DashboardPage() {
                           {desc}
                         </td>
                         <td style={{ padding: '10px' }}>
-                          <span style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', fontSize: '10px', padding: '3px 8px', borderRadius: '6px', fontFamily: 'DM Sans' }}>
+                          <span style={{ 
+                            background: 'rgba(139,92,246,0.15)', color: '#a78bfa', 
+                            fontSize: '10px', padding: '3px 8px', borderRadius: '6px', 
+                            fontFamily: 'DM Sans', display: 'inline-block' 
+                          }}>
                             {tx._cat}
                           </span>
+                          {tx._childCat && tx._childCat !== 'Other' && (
+                            <div style={{ fontSize: '9px', color: '#4b5563', marginTop: '2px' }}>
+                              {tx._childCat}
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '10px', fontWeight: '600', fontSize: '13px', textAlign: 'right', whiteSpace: 'nowrap',
                           color: tx._amt >= 0 ? '#22c55e' : '#ec4899' }}>

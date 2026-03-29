@@ -14,7 +14,7 @@ const extractTransactions = (transactionsResponse) => {
     if (!transactionsResponse || !Array.isArray(transactionsResponse.transactions)) {
         return [];
     }
-    return transactionsResponse.transactions.slice(0, 10).map(extractTransactionData);
+    return transactionsResponse.transactions.map(extractTransactionData);
 };
 
 module.exports = {
